@@ -17,6 +17,7 @@ export interface RunMeta {
   language: string;
   createdAt: number;     // timestamp
   startedAt: number | null;  // when timer started
+  finishedAt?: number;   // first completion timestamp (absent on older runs)
   timeLimit: number;     // seconds
   currentLevel: number;
   completedLevels: number[];
@@ -279,10 +280,14 @@ export async function calculateScore(runId: string, totalLevels: number): Promis
   const submissions = await listSubmissions(runId);
   const completedLevels = run.completedLevels || [];
 
-  // Calculate total time used
-  const totalTime = run.startedAt
-    ? Math.round((Date.now() - run.startedAt) / 1000)
-    : 0;
+  // Level times are cumulative and preserve the first pass, including on legacy runs.
+  let totalTime = run.startedAt ? Math.round((Date.now() - run.startedAt) / 1000) : 0;
+  if (run.status === 'finished') {
+    totalTime = run.levelTimes?.[totalLevels]
+      ?? (run.startedAt && run.finishedAt
+        ? Math.round((run.finishedAt - run.startedAt) / 1000)
+        : 0);
+  }
 
   const levelResults: LevelScore[] = [];
 

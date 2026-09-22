@@ -70,9 +70,10 @@ export default function RunPage({
         const problem: Problem = await problemRes.json();
 
         if (run.status === 'finished' || run.status === 'expired') {
-          // Review mode: read-only with current code
+          // Completed runs stay editable; expired runs open in review mode.
           dispatch({
             type: 'HYDRATE',
+            finished: run.status === 'finished',
             problem,
             runId: run.id,
             session: {
@@ -88,8 +89,10 @@ export default function RunPage({
               submissions: [],
             },
           });
-          dispatch({ type: 'ENTER_REVIEW' });
-          setShowStats(true);
+          if (run.status === 'expired') {
+            dispatch({ type: 'ENTER_REVIEW' });
+            setShowStats(true);
+          }
         } else if (run.startedAt && run.status === 'active') {
           dispatch({
             type: 'HYDRATE',
@@ -148,18 +151,17 @@ export default function RunPage({
     init();
   }, [runId, dispatch]);
 
-  // When session ends, update server, show overlay, then enter review + stats modal
+  // Expired sessions enter review; completion is recorded by validation.
   useEffect(() => {
-    if (!state.expired && !state.finished) return;
+    if (!state.expired || state.finished) return;
     if (!state.session || !state.runId || !state.problem) return;
     if (state.reviewMode) return;
 
-    const status = state.finished ? 'finished' : 'expired';
     fetch(`/api/runs/${state.runId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        status,
+        status: 'expired',
         completedLevels: state.session.completedLevels,
         currentLevel: state.session.currentLevel,
         levelTimes: state.session.levelTimes,
@@ -175,7 +177,7 @@ export default function RunPage({
         setRunData(freshRun);
       }
       setShowStats(true);
-    }, state.finished ? 2000 : 3000);
+    }, 3000);
     return () => clearTimeout(timer);
   }, [state.expired, state.finished, state.session, state.runId, state.problem, state.reviewMode, dispatch]);
 
@@ -289,7 +291,7 @@ export default function RunPage({
     );
   }
 
-  const locked = expired || finished || paused || reviewMode;
+  const locked = expired || paused || reviewMode;
 
   return (
     <div className="h-screen flex flex-col bg-surface-0">
@@ -303,7 +305,9 @@ export default function RunPage({
           {problem.title} - Level {session.currentLevel} of {problem.levels.length}
         </span>
         <div className="flex-1" />
-        {reviewMode ? (
+        {finished ? (
+          <span className="text-xs font-mono text-success">Completed · Keep practicing</span>
+        ) : reviewMode ? (
           <span className="text-xs font-mono text-foreground-secondary">review</span>
         ) : (
           <>
@@ -342,13 +346,9 @@ export default function RunPage({
         </div>
       )}
 
-      {/* All levels complete overlay */}
-      {finished && !expired && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center animate-fade-in">
-          <div className="text-center animate-slide-up">
-            <div className="text-4xl font-bold text-success mb-2">Complete!</div>
-            <div className="text-foreground-secondary text-sm">All levels passed</div>
-          </div>
+      {finished && (
+        <div className="border-b border-success/30 bg-success/10 px-5 py-2 text-sm text-success">
+          All levels passed! Your original completion time is saved. You can keep editing, running, and submitting.
         </div>
       )}
 
@@ -442,7 +442,16 @@ export default function RunPage({
         isSubmitting={isSubmitting}
         onSubmit={submitLevel}
         onNext={() => dispatch({ type: 'NEXT_LEVEL' })}
-        onViewResults={() => setShowStats(true)}
+        onViewResults={async () => {
+          setShowStats(true);
+          try {
+            const res = await fetch(`/api/runs/${runId}`);
+            if (res.ok) setRunData(await res.json());
+          } catch {
+            // Keep the previously loaded stats available when refreshing fails.
+          }
+        }}
+        finished={finished}
         onShowSolution={() => setShowSolutionModal(true)}
         saveStatus={saveStatus}
         reviewMode={reviewMode}

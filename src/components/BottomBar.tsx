@@ -12,6 +12,7 @@ interface BottomBarProps {
   onShowSolution?: () => void;
   saveStatus: 'idle' | 'saving' | 'saved';
   reviewMode?: boolean;
+  finished?: boolean;
 }
 
 export default function BottomBar({
@@ -24,6 +25,7 @@ export default function BottomBar({
   onShowSolution,
   saveStatus,
   reviewMode,
+  finished,
 }: BottomBarProps) {
   if (reviewMode) {
     return (
@@ -73,7 +75,7 @@ export default function BottomBar({
             </svg>
           </button>
         )}
-        {locked && (
+        {(locked || finished) && (
           <button
             onClick={onViewResults}
             className="bg-surface-2 border border-border text-foreground text-xs font-medium hover:bg-surface-3 transition-colors px-3.5 py-1.5"

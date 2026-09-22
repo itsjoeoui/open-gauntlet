@@ -115,12 +115,12 @@ export async function POST(request: NextRequest) {
     await saveSubmission(runId, submission);
 
     // Update run metadata when a level passes
-    if (allPassed) {
+    if (allPassed && run.status !== 'finished') {
       const completedLevels = [...new Set([...run.completedLevels, level])];
       const maxLevel = problem.levels.length;
       const now = Date.now();
       const levelTimes: Record<string, number> = { ...(run.levelTimes || {}) };
-      if (!levelTimes[String(level)] && run.startedAt) {
+      if (levelTimes[String(level)] == null && run.startedAt) {
         levelTimes[String(level)] = Math.round((now - run.startedAt) / 1000);
       }
       const finished = level === maxLevel;
@@ -128,6 +128,7 @@ export async function POST(request: NextRequest) {
         completedLevels,
         levelTimes: levelTimes as Record<number, number>,
         status: finished ? 'finished' : run.status,
+        ...(finished ? { finishedAt: now } : {}),
         // Don't update currentLevel here — client controls via NEXT button
       });
     }

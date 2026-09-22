@@ -73,10 +73,10 @@ type Action =
   | { type: 'DEV_SET_LEVEL'; level: 1 | 2 | 3 | 4 }
   | { type: 'SAVE_START' }
   | { type: 'SAVE_DONE' }
-  | { type: 'HYDRATE'; session: Session; problem: Problem; runId: string }
+  | { type: 'HYDRATE'; session: Session; problem: Problem; runId: string; finished?: boolean }
   | { type: 'ENTER_REVIEW' };
 
-function reducer(state: SessionState, action: Action): SessionState {
+export function reducer(state: SessionState, action: Action): SessionState {
   switch (action.type) {
     case 'INIT': {
       const settings = state.settings;
@@ -173,12 +173,12 @@ function reducer(state: SessionState, action: Action): SessionState {
       const maxLevel = state.problem?.levels.length ?? 4;
       const now = Date.now();
       const levelTimes = { ...state.session.levelTimes };
-      if (action.result.passed && !levelTimes[action.level]) {
+      if (action.result.passed && levelTimes[action.level] == null) {
         levelTimes[action.level] = Math.round((now - state.session.startedAt) / 1000);
       }
-      const finished = action.result.passed && action.level === maxLevel;
+      const finished = state.finished || (action.result.passed && action.level === maxLevel);
       // Auto-advance to next level on pass
-      const autoAdvancing = action.result.passed && !finished;
+      const autoAdvancing = action.result.passed && !finished && !state.session.completedLevels.includes(action.level);
       const nextLevel = autoAdvancing
         ? Math.min(state.session.currentLevel + 1, maxLevel) as 1 | 2 | 3 | 4
         : state.session.currentLevel;
@@ -203,6 +203,7 @@ function reducer(state: SessionState, action: Action): SessionState {
     }
 
     case 'TIMER_EXPIRE':
+      if (state.finished) return state;
       return { ...state, expired: true };
 
     case 'PAUSE':
@@ -292,7 +293,7 @@ function reducer(state: SessionState, action: Action): SessionState {
         testResults: null,
         testResultsPassed: null,
         expired: false,
-        finished: false,
+        finished: action.finished ?? false,
         levelJustCompleted: null,
       };
 
@@ -362,7 +363,7 @@ export function useSession() {
   }, [state.session?.code, state.runId, state.started, state.session]);
 
   const runCode = useCallback(async () => {
-    if (!state.session || !state.runId || state.expired || state.finished) return;
+    if (!state.session || !state.runId || state.expired || state.paused || state.reviewMode || state.isRunning || state.isSubmitting) return;
     dispatch({ type: 'RUN_START' });
     try {
       const res = await fetch('/api/run', {
@@ -375,10 +376,10 @@ export function useSession() {
     } catch (err) {
       dispatch({ type: 'RUN_RESULT', result: { stdout: '', stderr: String(err), exitCode: 1, executionTime: 0 } });
     }
-  }, [state.session, state.runId, state.expired, state.finished]);
+  }, [state.session, state.runId, state.expired, state.paused, state.reviewMode, state.isRunning, state.isSubmitting]);
 
   const submitLevel = useCallback(async () => {
-    if (!state.session || !state.runId || !state.problem || state.expired || state.finished) return;
+    if (!state.session || !state.runId || !state.problem || state.expired || state.paused || state.reviewMode || state.isRunning || state.isSubmitting) return;
     dispatch({ type: 'SUBMIT_START' });
     try {
       const res = await fetch('/api/validate', {
@@ -399,7 +400,7 @@ export function useSession() {
         level: state.session.currentLevel,
       });
     }
-  }, [state.session, state.runId, state.problem, state.expired, state.finished]);
+  }, [state.session, state.runId, state.problem, state.expired, state.paused, state.reviewMode, state.isRunning, state.isSubmitting]);
 
   return { state, dispatch, runCode, submitLevel };
 }
