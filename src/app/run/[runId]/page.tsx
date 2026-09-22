@@ -213,8 +213,9 @@ export default function RunPage({
         runCodeRef.current();
       }
     };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
+    // Capture before editor keybindings can consume the run shortcut.
+    window.addEventListener('keydown', handler, true);
+    return () => window.removeEventListener('keydown', handler, true);
   }, []);
 
   // Auto-clear level completion banner after 3s
@@ -393,22 +394,17 @@ export default function RunPage({
           <Group orientation="vertical" className="h-full">
             {/* Editor with file tab */}
             <Panel defaultSize={60} minSize={25}>
-              <div className="h-full flex flex-col bg-surface-1">
-                <div className="h-8 border-b border-border flex items-center px-3 shrink-0 bg-surface-0">
-                  <span className="text-xs font-mono text-foreground-secondary">
-                    solution.{session.language === 'python' ? 'py' : session.language === 'javascript' ? 'js' : session.language}
-                  </span>
-                </div>
-                <div className="flex-1">
-                  <Editor
-                    code={session.code}
-                    language={session.language}
-                    readOnly={locked}
-                    settings={settings}
-                    onChange={(code) => dispatch({ type: 'UPDATE_CODE', code })}
-                  />
-                </div>
-              </div>
+              <Editor
+                code={session.code}
+                language={session.language}
+                readOnly={locked}
+                settings={settings}
+                onChange={(code) => dispatch({ type: 'UPDATE_CODE', code })}
+                onToggleVim={() => dispatch({
+                  type: 'UPDATE_SETTINGS',
+                  settings: { keybindings: settings.keybindings === 'vim' ? 'default' : 'vim' },
+                })}
+              />
             </Panel>
 
             <Separator className="h-[2px] bg-border hover:bg-accent/40 transition-colors cursor-row-resize" />
