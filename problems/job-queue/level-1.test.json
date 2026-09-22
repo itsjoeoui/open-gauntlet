@@ -33,6 +33,8 @@
     },
     {
       "name": "Fail and status",
+      "supersededAtLevel": 3,
+      "supersededReason": "Level 3 replaces terminal failure with retrying/dead-letter states.",
       "operations": [
         ["init"],
         ["enqueue", "a", {}],
@@ -181,6 +183,8 @@
     },
     {
       "name": "Fail a running job",
+      "supersededAtLevel": 3,
+      "supersededReason": "Level 3 replaces terminal failure with retrying/dead-letter states.",
       "operations": [
         [
           "init"

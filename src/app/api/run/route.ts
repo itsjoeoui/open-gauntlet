@@ -1,3 +1,4 @@
+import { getTestsThroughLevel } from '@/lib/test-suites';
 import { NextRequest, NextResponse } from 'next/server';
 import type { TestResult } from '@/types';
 import { execute, getExtension } from '@/lib/executor';
@@ -40,8 +41,8 @@ export async function POST(request: NextRequest) {
     // Write code to disk
     await saveCode(runId, code, run.language);
 
-    // Run this level's visible tests only (matches real CodeSignal ICF behavior)
-    const visibleTests = levelData.testCases.visible;
+    // Include earlier levels so edits cannot silently regress previous behavior.
+    const { visible: visibleTests } = getTestsThroughLevel(problem, currentLevel);
 
     if (run.language === 'python') {
       const harnessContent = generatePythonHarness(problem.className, visibleTests, false);

@@ -1,23 +1,9 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
 import test from 'node:test';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { createElement } from 'react';
-import ts from 'typescript';
+import { loadTS } from './load-ts.mjs';
 
-const require = createRequire(import.meta.url);
-function loadTS(file, mocks = {}) {
-  const source = readFileSync(new URL(file, import.meta.url), 'utf8');
-  const { outputText } = ts.transpileModule(source, {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX },
-  });
-  const loaded = { exports: {} };
-  new Function('require', 'module', 'exports', outputText)(
-    (name) => name in mocks ? mocks[name] : require(name), loaded, loaded.exports,
-  );
-  return loaded.exports;
-}
 const { reducer } = loadTS('../src/hooks/useSession.ts');
 const problem = { id: 'test', levels: [1, 2, 3, 4], starterCode: { python: '' } };
 function sessionState(finished = false) {
@@ -74,6 +60,7 @@ test('validation records the first finish and keeps it through successful and fa
   const saved = [];
   const updates = [];
   const { POST } = loadTS('../src/app/api/validate/route.ts', {
+    '@/lib/test-suites': loadTS('../src/lib/test-suites.ts'),
     '@/lib/executor': { execute: async () => ({ stdout: '', stderr: '' }), getExtension: () => 'py' },
     '@/lib/runs': {
       getRun: async () => run,

@@ -1,5 +1,6 @@
 'use client';
 
+import { getTestsThroughLevel } from '@/lib/test-suites';
 import { useState, useCallback, useRef } from 'react';
 import type { Problem, TestResult } from '@/types';
 
@@ -88,10 +89,8 @@ export default function TestPanel({
   const [isRunningCustom, setIsRunningCustom] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Show this level's tests only (matches real CodeSignal ICF behavior)
-  const currentLevelData = problem.levels.find((l) => l.level === currentLevel);
-  const visibleTests = currentLevelData?.testCases.visible ?? [];
-  const hiddenCount = currentLevelData?.testCases.hidden.length ?? 0;
+  const { visible: visibleTests, hidden: hiddenTests, superseded } = getTestsThroughLevel(problem, currentLevel);
+  const hiddenCount = hiddenTests.length;
 
   const toggleExpand = (i: number) => {
     setExpanded((prev) => {
@@ -190,6 +189,20 @@ export default function TestPanel({
       {/* Content */}
       {activeTab === 'tests' ? (
         <div className="flex-1 overflow-auto p-3 space-y-2">
+          <div className="text-[10px] text-foreground-secondary font-mono">
+            {currentLevel === 1 ? 'Level 1 tests' : `Tests from levels 1–${currentLevel}`}
+          </div>
+          {superseded.length > 0 && (
+            <details className="text-xs text-foreground-secondary border border-border-subtle p-2">
+              <summary className="cursor-pointer">Superseded earlier tests</summary>
+              <p className="mt-2">Tests for requirements replaced by later levels are excluded from both visible and hidden suites.</p>
+              <ul className="mt-2 space-y-1">
+                {superseded.map((test) => (
+                  <li key={test.name}>{test.name} — {test.supersededReason}</li>
+                ))}
+              </ul>
+            </details>
+          )}
           {hasStderr && (
             <pre className="whitespace-pre-wrap text-danger bg-danger/5 border border-danger/20 p-2.5 overflow-auto max-h-[30vh] font-mono text-xs">
               {runOutput!.stderr}

@@ -1,3 +1,4 @@
+import { getTestsThroughLevel } from '@/lib/test-suites';
 import { NextRequest, NextResponse } from 'next/server';
 import type { ValidateResponse, TestResult } from '@/types';
 import { execute, getExtension } from '@/lib/executor';
@@ -48,11 +49,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Level not found' }, { status: 404 });
   }
 
-  // Run only this level's tests (matches real CodeSignal ICF behavior).
-  // Each level's test cases invoke prior-level operations as setup,
-  // so backwards compat is tested implicitly through usage, not re-grading.
-  const visibleTests: import('@/types').TestCase[] = [...levelData.testCases.visible];
-  const hiddenTests: import('@/types').TestCase[] = [...levelData.testCases.hidden];
+  // Keep visible tests first so the result-masking boundary stays consistent.
+  const { visible: visibleTests, hidden: hiddenTests } = getTestsThroughLevel(problem, level);
   const allTests = [...visibleTests, ...hiddenTests];
   const visibleCount = visibleTests.length;
 

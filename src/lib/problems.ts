@@ -35,6 +35,12 @@ function validateTestCase(tc: unknown, problemId: string, level: number, index: 
       `Problem ${problemId} L${level} test "${t.name}": operations (${t.operations.length}) and expected (${(t.expected as unknown[]).length}) length mismatch`
     );
   }
+  if (t.supersededAtLevel != null && (
+    !Number.isInteger(t.supersededAtLevel) || (t.supersededAtLevel as number) <= level ||
+    (t.supersededAtLevel as number) > 4 || typeof t.supersededReason !== 'string' || !t.supersededReason.trim()
+  )) {
+    throw new Error(`Problem ${problemId} L${level} test "${t.name}": superseded tests need a later level (up to 4) and a reason`);
+  }
   return t as unknown as TestCase;
 }
 

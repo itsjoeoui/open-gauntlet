@@ -34,6 +34,8 @@
     },
     {
       "name": "Queue length and failed jobs",
+      "supersededAtLevel": 3,
+      "supersededReason": "Level 3 replaces failed-job tracking with retries and the dead-letter queue.",
       "operations": [
         ["init"],
         ["enqueue", "a", {}],
@@ -101,6 +103,8 @@
     },
     {
       "name": "Get failed jobs",
+      "supersededAtLevel": 3,
+      "supersededReason": "Level 3 replaces failed-job tracking with retries and the dead-letter queue.",
       "operations": [
         ["init"],
         ["enqueue", "b", {}],

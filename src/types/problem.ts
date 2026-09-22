@@ -26,6 +26,9 @@ export interface TestSuite {
 
 export interface TestCase {
   name: string;
+  // Omit unless a later level explicitly replaces the behavior under test.
+  supersededAtLevel?: number;
+  supersededReason?: string;
   operations: (string | number | boolean | null)[][];
   expected: string[];
 }
